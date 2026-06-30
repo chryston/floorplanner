@@ -209,7 +209,7 @@ interface StoreState {
 - `switchLayout(id)`
 
 **Object management:**
-- `addObject(shapeType, layerId?)` — default size from `shapes.ts`, places at centre of canvas
+- `addObject(shapeType, layerId?)` — default size from `shapes.ts`, places at centre of the background image (or at 100,100 if no image uploaded)
 - `updateObject(id, patch: Partial<FloorObject>)` — Immer patch
 - `removeObject(id)`
 - `selectObject(id | null)`
