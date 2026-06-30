@@ -120,6 +120,7 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
     if (s.project.layouts.some(l => l.id === layoutId)) {
       s.project.activeLayoutId = layoutId
     }
+    s.project.updatedAt = new Date().toISOString()
   }),
 
   setLayoutMemo: (layoutId, memo) => set(s => {
@@ -199,12 +200,14 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
     const layout = s.project.layouts.find(l => l.id === s.project.activeLayoutId) ?? s.project.layouts[0]
     const layer = layout.layers.find(l => l.id === layerId)
     if (layer) layer.visible = visible
+    s.project.updatedAt = new Date().toISOString()
   }),
 
   setLayerLocked: (layerId, locked) => set(s => {
     const layout = s.project.layouts.find(l => l.id === s.project.activeLayoutId) ?? s.project.layouts[0]
     const layer = layout.layers.find(l => l.id === layerId)
     if (layer) layer.locked = locked
+    s.project.updatedAt = new Date().toISOString()
   }),
 
   reorderLayer: (layerId, newOrder) => set(s => {
