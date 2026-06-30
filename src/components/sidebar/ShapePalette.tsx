@@ -42,6 +42,8 @@ function ShapeIcon({ type }: { type: ShapeType }) {
       const pts = Array.from({length:8},(_,i)=>{const a=(2*Math.PI*i/8)-Math.PI/8;return `${S/2+S/2*Math.cos(a)},${S/2+S/2*Math.sin(a)}`}).join(' ')
       return <svg width={S} height={S}><polygon points={pts} fill={fill} stroke={stroke} strokeWidth={1}/></svg>
     }
+    default:
+      return <svg width={28} height={28}><rect x={2} y={2} width={24} height={24} fill={fill} stroke={stroke} strokeWidth={1}/></svg>
   }
 }
 
