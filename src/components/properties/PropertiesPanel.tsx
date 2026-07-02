@@ -1,4 +1,3 @@
-import React from 'react'
 import { useStore, activeLayout } from '../../store/store'
 import type { FloorObject } from '../../types'
 

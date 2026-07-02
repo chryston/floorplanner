@@ -1,4 +1,3 @@
-import React from 'react'
 import { useStore } from '../../store/store'
 import { ALL_SHAPE_TYPES, SHAPE_LABELS } from '../../data/shapes'
 import type { ShapeType } from '../../types'
