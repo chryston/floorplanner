@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 import { PlacedObject } from './PlacedObject'
 import { useStore, makeDefaultProject } from '../../store/store'
 import type { FloorObject } from '../../types'
@@ -50,15 +50,16 @@ describe('PlacedObject', () => {
     expect(g.getAttribute('transform')).toContain('rotate(45')
   })
 
-  it('calls selectObject on click', async () => {
+  it('calls selectObject on click', () => {
     const svgRef = { current: document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement }
-    render(
+    const { container } = render(
       <svg>
         <PlacedObject object={makeObj()} isSelected={false} svgRef={svgRef} zoom={1} />
       </svg>
     )
-    // selectObject is tested via store — click fires store action
-    expect(useStore.getState().selectedObjectId).toBeNull()
+    const group = container.querySelector('g[data-object-id]')!
+    fireEvent.mouseDown(group, { button: 0, clientX: 0, clientY: 0 })
+    expect(useStore.getState().selectedObjectId).toBe('obj1')
   })
 
   it('shows 8 resize handles when selected', () => {

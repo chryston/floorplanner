@@ -53,6 +53,7 @@ interface StoreState {
   setLayoutMemo: (layoutId: string, memo: string) => void
   // Object actions
   addObject: (shapeType: ShapeType) => void
+  addCustomObject: (name: string, shapeType: ShapeType, width: number, depth: number) => void
   updateObject: (objectId: string, patch: Partial<FloorObject>) => void
   deleteObject: (objectId: string) => void
   // Layer actions
@@ -151,6 +152,34 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
       y,
       width,
       depth,
+      height: 2400,
+      rotation: 0,
+      fill: '#60a5fa',
+      stroke: '#2563eb',
+      locked: false,
+      visible: true,
+    }
+    layout.objects.push(obj)
+    s.project.updatedAt = new Date().toISOString()
+  }),
+
+  addCustomObject: (name, shapeType, width, depth) => set(s => {
+    const layout = s.project.layouts.find(l => l.id === s.project.activeLayoutId) ?? s.project.layouts[0]
+    const canvas = layout.canvas
+    let x = 100, y = 100
+    if (canvas.image && canvas.pixelsPerMm) {
+      const imgW = canvas.image.widthPx / canvas.pixelsPerMm
+      const imgH = canvas.image.heightPx / canvas.pixelsPerMm
+      x = Math.max(0, imgW / 2 - width / 2)
+      y = Math.max(0, imgH / 2 - depth / 2)
+    }
+    const defaultLayerId = layout.layers[0]?.id ?? ''
+    const obj: FloorObject = {
+      id: nanoid(),
+      name,
+      shapeType,
+      layerId: defaultLayerId,
+      x, y, width, depth,
       height: 2400,
       rotation: 0,
       fill: '#60a5fa',

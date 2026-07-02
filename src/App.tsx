@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
-import { useStore, activeLayout, useTemporalStore } from './store/store'
+import { useStore, useTemporalStore } from './store/store'
 import { FloorPlanCanvas } from './components/canvas/FloorPlanCanvas'
 import { ShapePalette } from './components/sidebar/ShapePalette'
 import { LayersPanel } from './components/sidebar/LayersPanel'
@@ -20,8 +20,7 @@ interface CalibrationPoint {
 export default function App() {
   const setCanvasImage = useStore(s => s.setCanvasImage)
   const setPixelsPerMm = useStore(s => s.setPixelsPerMm)
-  const addObject = useStore(s => s.addObject)
-  const updateObject = useStore(s => s.updateObject)
+  const addCustomObject = useStore(s => s.addCustomObject)
   const importProject = useStore(s => s.importProject)
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -92,10 +91,7 @@ export default function App() {
   }
 
   const handleCustomShapeConfirm = (name: string, width: number, depth: number) => {
-    addObject('rectangle')
-    const layout = activeLayout(useStore.getState().project)
-    const obj = layout.objects[layout.objects.length - 1]
-    if (obj) updateObject(obj.id, { name, width, depth })
+    addCustomObject(name, 'rectangle', width, depth)
     setShowCustomShapeModal(false)
   }
 

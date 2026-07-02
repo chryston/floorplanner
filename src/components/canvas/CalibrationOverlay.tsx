@@ -19,7 +19,8 @@ export function CalibrationOverlay({ svgRef, onCalibrationClick }: Props) {
     const pt = svg.createSVGPoint()
     pt.x = e.clientX
     pt.y = e.clientY
-    const svgPt = pt.matrixTransform(svg.getScreenCTM()!.inverse())
+    const target = e.currentTarget as SVGRectElement
+    const svgPt = pt.matrixTransform(target.getScreenCTM()!.inverse())
     onCalibrationClick({
       svgX: svgPt.x,
       svgY: svgPt.y,

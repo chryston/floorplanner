@@ -106,4 +106,18 @@ describe('renderShape', () => {
     const el = renderShape(makeObj({ shapeType: 'quadrant', width: 150, depth: 150 })) as React.ReactElement<Record<string, unknown>>
     expect(el.type).toBe('path')
   })
+
+  it('L-shape returns polygon with 6 points', () => {
+    const el = renderShape(makeObj({ shapeType: 'L-shape', width: 200, depth: 200 }))
+    expect(el.type).toBe('polygon')
+    const points: string = (el as React.ReactElement<Record<string, unknown>>).props.points as string
+    expect(points.trim().split(' ')).toHaveLength(6)
+  })
+
+  it('U-shape returns polygon with 8 points', () => {
+    const el = renderShape(makeObj({ shapeType: 'U-shape', width: 200, depth: 200 }))
+    expect(el.type).toBe('polygon')
+    const points: string = (el as React.ReactElement<Record<string, unknown>>).props.points as string
+    expect(points.trim().split(' ')).toHaveLength(8)
+  })
 })

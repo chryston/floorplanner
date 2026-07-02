@@ -8,9 +8,26 @@ export function LayersPanel() {
   const setLayerVisible = useStore(s => s.setLayerVisible)
   const setLayerLocked = useStore(s => s.setLayerLocked)
   const deleteLayer = useStore(s => s.deleteLayer)
+  const reorderLayer = useStore(s => s.reorderLayer)
 
   const layout = activeLayout(project)
   const sorted = [...layout.layers].sort((a, b) => b.order - a.order)
+
+  const handleMoveUp = (layer: import('../../types').FloorLayer) => {
+    const layerAbove = sorted.find(l => l.order > layer.order)
+    if (layerAbove) {
+      reorderLayer(layer.id, layerAbove.order)
+      reorderLayer(layerAbove.id, layer.order)
+    }
+  }
+
+  const handleMoveDown = (layer: import('../../types').FloorLayer) => {
+    const layerBelow = [...sorted].reverse().find(l => l.order < layer.order)
+    if (layerBelow) {
+      reorderLayer(layer.id, layerBelow.order)
+      reorderLayer(layerBelow.id, layer.order)
+    }
+  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
 
@@ -49,6 +66,20 @@ export function LayersPanel() {
             >
               {layer.locked ? '🔒' : '🔓'}
             </button>
+
+            {/* Reorder */}
+            <button
+              onClick={() => handleMoveUp(layer)}
+              disabled={layer.order === sorted[0].order}
+              title="Move layer up"
+              className="text-text-muted hover:text-text-primary text-xs disabled:opacity-20"
+            >▲</button>
+            <button
+              onClick={() => handleMoveDown(layer)}
+              disabled={layer.order === sorted[sorted.length - 1].order}
+              title="Move layer down"
+              className="text-text-muted hover:text-text-primary text-xs disabled:opacity-20"
+            >▼</button>
 
             {/* Name */}
             {editingId === layer.id ? (
