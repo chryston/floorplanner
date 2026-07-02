@@ -10,17 +10,16 @@ const ZOOM_SENSITIVITY = 0.001
 interface Props {
   calibrating: boolean
   onCalibrationPoint: (pt: { svgX: number; svgY: number; screenX: number; screenY: number }) => void
+  svgRef: React.RefObject<SVGSVGElement | null>
 }
 
-export function FloorPlanCanvas({ calibrating, onCalibrationPoint }: Props) {
+export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef }: Props) {
   const project = useStore(s => s.project)
   const selectedObjectId = useStore(s => s.selectedObjectId)
   const clearSelection = useStore(s => s.clearSelection)
 
   const layout = activeLayout(project)
   const canvas = layout.canvas
-
-  const svgRef = useRef<SVGSVGElement>(null)
   const [zoom, setZoom] = useState(1)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
