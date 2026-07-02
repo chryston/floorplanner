@@ -18,7 +18,6 @@ interface CalibrationPoint {
 }
 
 export default function App() {
-  const project = useStore(s => s.project)
   const setCanvasImage = useStore(s => s.setCanvasImage)
   const setPixelsPerMm = useStore(s => s.setPixelsPerMm)
   const addObject = useStore(s => s.addObject)
@@ -105,8 +104,6 @@ export default function App() {
     useTemporalStore.getState().clear()
     setShowImportModal(false)
   }
-
-  void project
 
   return (
     <div className="flex h-full flex-col bg-surface text-text-primary">
