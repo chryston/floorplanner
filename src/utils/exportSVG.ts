@@ -3,8 +3,10 @@ import { isDimensionAnnotation, isWallSegment, isDoorObject, isWindowObject } fr
 import type { AnyObject } from '../types'
 
 export function exportSVGBlob(svgEl: SVGSVGElement): Blob {
+  const clone = svgEl.cloneNode(true) as SVGSVGElement
+  clone.querySelectorAll('[data-no-export="true"]').forEach(el => el.remove())
   const serializer = new XMLSerializer()
-  const source = serializer.serializeToString(svgEl)
+  const source = serializer.serializeToString(clone)
   const svgBlob = new Blob(
     ['<?xml version="1.0" standalone="no"?>\r\n', source],
     { type: 'image/svg+xml;charset=utf-8' }

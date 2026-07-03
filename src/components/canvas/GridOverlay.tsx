@@ -20,7 +20,7 @@ export function GridOverlay({ grid, zoom, panX, panY, svgWidth, svgHeight }: Pro
   const majorOy = ((panY % majorPx) + majorPx) % majorPx
 
   return (
-    <g style={{ pointerEvents: 'none' }}>
+    <g style={{ pointerEvents: 'none' }} data-no-export="true">
       <defs>
         {grid.showMinor && (
           <pattern

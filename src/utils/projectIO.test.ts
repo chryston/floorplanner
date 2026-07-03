@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { exportProject, loadProject, ProjectImportError } from './projectIO'
 import { makeDefaultProject } from '../store/store'
-import type { FloorProject, WallSegment } from '../types'
+import type { FloorProject, WallSegment, DoorObject, WindowObject, DimensionAnnotation, AnyObject } from '../types'
 import { isWallSegment } from '../types'
 
 function makeProject(overrides: Partial<FloorProject> = {}): FloorProject {
@@ -147,3 +147,64 @@ describe('schema migration v1 → v2', () => {
     expect(isWallSegment(loaded_wall!)).toBe(true)
   })
 })
+
+describe('JSON round-trip for all new object types', () => {
+  function makeProjWith(obj: AnyObject) {
+    const proj = makeDefaultProject()
+    proj.layouts[0].objects.push(obj)
+    return proj
+  }
+
+  it('WallSegment round-trip', () => {
+    const wall: WallSegment = {
+      type: 'wall', id: 'w1', name: 'W',
+      start: { x: 0, y: 0 }, end: { x: 500, y: 0 }, thicknessMm: 100,
+    }
+    const loaded = loadProject(exportProject(makeProjWith(wall)))
+    expect(loaded.layouts[0].objects.find(o => o.id === 'w1')).toMatchObject({
+      type: 'wall', thicknessMm: 100,
+    })
+  })
+
+  it('DoorObject round-trip', () => {
+    const door: DoorObject = {
+      type: 'door', id: 'd1', name: 'D', wallId: 'w1',
+      offsetMm: 200, widthMm: 900, swingDirection: 'left', swingAngleDeg: 90,
+    }
+    const loaded = loadProject(exportProject(makeProjWith(door)))
+    expect(loaded.layouts[0].objects.find(o => o.id === 'd1')).toMatchObject({
+      type: 'door', widthMm: 900,
+    })
+  })
+
+  it('WindowObject round-trip', () => {
+    const win: WindowObject = {
+      type: 'window', id: 'win1', name: 'W', wallId: 'w1',
+      offsetMm: 100, widthMm: 1200,
+    }
+    const loaded = loadProject(exportProject(makeProjWith(win)))
+    expect(loaded.layouts[0].objects.find(o => o.id === 'win1')).toMatchObject({
+      type: 'window', widthMm: 1200,
+    })
+  })
+
+  it('DimensionAnnotation round-trip', () => {
+    const dim: DimensionAnnotation = {
+      type: 'dimension', id: 'dim1',
+      start: { x: 0, y: 0 }, end: { x: 1000, y: 0 },
+    }
+    const loaded = loadProject(exportProject(makeProjWith(dim)))
+    expect(loaded.layouts[0].objects.find(o => o.id === 'dim1')).toMatchObject({
+      type: 'dimension',
+      end: { x: 1000, y: 0 },
+    })
+  })
+
+  it('GridSettings round-trip', () => {
+    const proj = makeDefaultProject()
+    proj.layouts[0].canvas.grid.minorSpacingMm = 250
+    const loaded = loadProject(exportProject(proj))
+    expect(loaded.layouts[0].canvas.grid.minorSpacingMm).toBe(250)
+  })
+})
+
