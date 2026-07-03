@@ -109,10 +109,10 @@ export function PlacedObject({ object, isSelected, svgRef, zoom, snapSpacingMm }
       currentX = newX
       currentY = newY
 
-      const snappedW = e.altKey ? newW : snapValue(newW, snapSpacingMm)
-      const snappedD = e.altKey ? newD : snapValue(newD, snapSpacingMm)
-      const snappedX = e.altKey ? newX : snapValue(newX, snapSpacingMm)
-      const snappedY = e.altKey ? newY : snapValue(newY, snapSpacingMm)
+      const snappedW = mv.altKey ? newW : snapValue(newW, snapSpacingMm)
+      const snappedD = mv.altKey ? newD : snapValue(newD, snapSpacingMm)
+      const snappedX = mv.altKey ? newX : snapValue(newX, snapSpacingMm)
+      const snappedY = mv.altKey ? newY : snapValue(newY, snapSpacingMm)
 
       updateObject(id, { width: snappedW, depth: snappedD, x: snappedX, y: snappedY })
     }

@@ -346,7 +346,7 @@ export const useStore = create<StoreState>()(
       }
     ),
     {
-      name: 'floorplanner-v1',
+      name: 'floorplanner-v2',
       partialize: (s) => ({ project: s.project }),
     }
   )

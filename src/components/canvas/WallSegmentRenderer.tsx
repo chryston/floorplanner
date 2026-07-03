@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import type { WallSegment } from '../../types'
 
 interface Props {
@@ -11,43 +11,40 @@ interface Props {
 
 export function WallSegmentRenderer({ wall, selected, zoom, onSelect, onUpdate }: Props) {
   const { start, end, thicknessMm, fill, stroke } = wall
-  const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | 'body' | null>(null)
-  const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 })
-  const [wallOrigin, setWallOrigin] = useState<{ start: typeof start; end: typeof end } | null>(null)
 
   const handleRadius = 6 / zoom
   const hitWidth = Math.max(thicknessMm, 10 / zoom)
 
   const onHandleMouseDown = (handle: 'start' | 'end' | 'body', e: React.MouseEvent) => {
     e.stopPropagation()
-    setDraggingHandle(handle)
-    setDragOrigin({ x: e.clientX, y: e.clientY })
-    setWallOrigin({ start: { ...start }, end: { ...end } })
-  }
+    const origin = { x: e.clientX, y: e.clientY }
+    const wallStart = { ...wall.start }
+    const wallEnd = { ...wall.end }
 
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!draggingHandle || !wallOrigin) return
-    const dx = (e.clientX - dragOrigin.x) / zoom
-    const dy = (e.clientY - dragOrigin.y) / zoom
-    if (draggingHandle === 'start') {
-      onUpdate({ start: { x: wallOrigin.start.x + dx, y: wallOrigin.start.y + dy } })
-    } else if (draggingHandle === 'end') {
-      onUpdate({ end: { x: wallOrigin.end.x + dx, y: wallOrigin.end.y + dy } })
-    } else {
-      onUpdate({
-        start: { x: wallOrigin.start.x + dx, y: wallOrigin.start.y + dy },
-        end: { x: wallOrigin.end.x + dx, y: wallOrigin.end.y + dy },
-      })
+    const onMove = (mv: MouseEvent) => {
+      const dx = (mv.clientX - origin.x) / zoom
+      const dy = (mv.clientY - origin.y) / zoom
+      if (handle === 'start') {
+        onUpdate({ start: { x: wallStart.x + dx, y: wallStart.y + dy } })
+      } else if (handle === 'end') {
+        onUpdate({ end: { x: wallEnd.x + dx, y: wallEnd.y + dy } })
+      } else {
+        onUpdate({
+          start: { x: wallStart.x + dx, y: wallStart.y + dy },
+          end: { x: wallEnd.x + dx, y: wallEnd.y + dy },
+        })
+      }
     }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
-
-  const onMouseUp = () => setDraggingHandle(null)
 
   return (
     <g
-      onMouseMove={draggingHandle ? onMouseMove : undefined}
-      onMouseUp={draggingHandle ? onMouseUp : undefined}
-      onMouseLeave={draggingHandle ? onMouseUp : undefined}
     >
       {/* Wide transparent hit area for selection and body drag */}
       <line
