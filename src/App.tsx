@@ -131,6 +131,7 @@ export default function App() {
             calibrating={calibrating}
             onCalibrationPoint={handleCalibrationPoint}
             svgRef={svgRef}
+            activeTool="select"
           />
         </main>
 
