@@ -24,8 +24,8 @@ export function DoorRenderer({ door, wall, selected, zoom, onSelect }: DoorProps
   const hx = -w / 2
 
   // Leaf tip is at (w/2, 0); arc sweeps from tip back to hinge-side
-  const arcEndX = hx + w * Math.cos(swingRad)
-  const arcEndY = w * Math.sin(swingRad) * swingSide
+  const arcEndX = hx + w * Math.cos(swingRad * swingSide)
+  const arcEndY = w * Math.sin(swingRad * swingSide)
   // sweep-flag: 0 = counterclockwise (+y in SVG = down), 1 = clockwise
   const sweepFlag = swingSide > 0 ? 0 : 1
 
