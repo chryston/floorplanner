@@ -7,19 +7,31 @@ import type { ActiveTool } from '../../types'
 interface Props {
   svgRef: React.RefObject<SVGSVGElement | null>
   activeTool: ActiveTool
-  onSetActiveTool: (tool: ActiveTool) => void
+  onSetTool: (tool: ActiveTool) => void
   onUploadImage: () => void
   onCalibrate: () => void
   onImport: () => void
 }
 
-export function Toolbar({ svgRef, activeTool, onSetActiveTool, onUploadImage, onCalibrate, onImport }: Props) {
+const GRID_SPACING_OPTIONS = [50, 100, 250, 500, 1000]
+
+function toolIcon(tool: ActiveTool): string {
+  const icons: Record<ActiveTool, string> = {
+    select: '↖', wall: '▬', door: '🚪', window: '⬜', dimension: '↔',
+  }
+  return icons[tool]
+}
+
+export function Toolbar({ svgRef, activeTool, onSetTool, onUploadImage, onCalibrate, onImport }: Props) {
   const project = useStore(s => s.project)
   const addLayout = useStore(s => s.addLayout)
   const switchLayout = useStore(s => s.switchLayout)
   const deleteLayout = useStore(s => s.deleteLayout)
   const renameLayout = useStore(s => s.renameLayout)
   const duplicateLayout = useStore(s => s.duplicateLayout)
+  const setGridSettings = useStore(s => s.setGridSettings)
+  const setSnapSettings = useStore(s => s.setSnapSettings)
+  const canvas = useStore(s => activeLayout(s.project).canvas)
 
   const { undo, redo, pastStates, futureStates } = useTemporalStore.getState()
   const canUndo = pastStates.length > 0
@@ -117,7 +129,7 @@ export function Toolbar({ svgRef, activeTool, onSetActiveTool, onUploadImage, on
         {(['select', 'wall', 'door', 'window', 'dimension'] as ActiveTool[]).map(tool => (
           <button
             key={tool}
-            onClick={() => onSetActiveTool(tool)}
+            onClick={() => onSetTool(tool)}
             title={tool.charAt(0).toUpperCase() + tool.slice(1)}
             className={`px-2 py-1 text-sm rounded transition-colors ${
               activeTool === tool
@@ -125,9 +137,47 @@ export function Toolbar({ svgRef, activeTool, onSetActiveTool, onUploadImage, on
                 : 'text-text-muted hover:text-text-primary hover:bg-surface-raised'
             }`}
           >
-            {tool === 'select' ? '↖' : tool === 'wall' ? '▬' : tool === 'door' ? '🚪' : tool === 'window' ? '⊡' : '↔'}
+            {toolIcon(tool)}
           </button>
         ))}
+        <div className="w-px h-4 bg-divider mx-1" />
+        {/* Grid controls */}
+        <button
+          onClick={() => setGridSettings({ enabled: !canvas.grid.enabled })}
+          title="Toggle grid"
+          className={`px-2 py-1 text-sm rounded transition-colors ${
+            canvas.grid.enabled
+              ? 'bg-blue-600 text-white'
+              : 'text-text-muted hover:text-text-primary hover:bg-surface-raised'
+          }`}
+        >
+          Grid
+        </button>
+        <select
+          value={canvas.grid.minorSpacingMm}
+          onChange={e => setGridSettings({
+            minorSpacingMm: Number(e.target.value),
+            majorSpacingMm: Number(e.target.value) * 10,
+          })}
+          title="Grid spacing"
+          className="px-1 py-1 text-sm bg-surface text-text-muted border border-divider rounded"
+        >
+          {GRID_SPACING_OPTIONS.map(v => (
+            <option key={v} value={v}>{v} mm</option>
+          ))}
+        </select>
+        {/* Snap control */}
+        <button
+          onClick={() => setSnapSettings({ enabled: !canvas.snap.enabled })}
+          title="Toggle snap"
+          className={`px-2 py-1 text-sm rounded transition-colors ${
+            canvas.snap.enabled
+              ? 'bg-blue-600 text-white'
+              : 'text-text-muted hover:text-text-primary hover:bg-surface-raised'
+          }`}
+        >
+          Snap
+        </button>
         <div className="w-px h-4 bg-divider mx-1" />
         <button
           onClick={onUploadImage}

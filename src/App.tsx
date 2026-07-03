@@ -30,6 +30,7 @@ export default function App() {
   const addAnyObject = useStore(s => s.addAnyObject)
   const deleteObject = useStore(s => s.deleteObject)
   const deleteWall = useStore(s => s.deleteWall)
+  const clearSelection = useStore(s => s.clearSelection)
   const selectedObjectId = useStore(s => s.selectedObjectId)
   const snap = useStore(s => activeLayout(s.project).canvas.snap)
 
@@ -37,7 +38,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const zoomRef = useRef(1)
 
-  const [activeTool, _setActiveTool] = useState<ActiveTool>('select')
+  const [activeTool, setActiveTool] = useState<ActiveTool>('select')
   const [dimStart, setDimStart] = useState<{ x: number; y: number } | null>(null)
   const [dimPreviewEnd, setDimPreviewEnd] = useState<{ x: number; y: number } | null>(null)
 
@@ -72,6 +73,7 @@ export default function App() {
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedObjectId) {
+          e.preventDefault()
           const layout = activeLayout(useStore.getState().project)
           const obj = layout.objects.find(o => o.id === selectedObjectId)
           if (obj && isWallSegment(obj)) {
@@ -79,9 +81,12 @@ export default function App() {
           } else if (obj) {
             deleteObject(selectedObjectId)
           }
+          clearSelection()
         }
       }
       if (e.key === 'Escape') {
+        e.preventDefault()
+        setActiveTool('select')
         setWallStart(null)
         setWallPreviewEnd(null)
         setDimStart(null)
@@ -91,7 +96,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedObjectId, deleteObject, deleteWall])
+  }, [selectedObjectId, deleteObject, deleteWall, clearSelection, setActiveTool])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -305,7 +310,7 @@ export default function App() {
       <Toolbar
         svgRef={svgRef}
         activeTool={activeTool}
-        onSetActiveTool={_setActiveTool}
+        onSetTool={setActiveTool}
         onUploadImage={() => fileInputRef.current?.click()}
         onCalibrate={() => { setCalibrating(true); setCalibrationPoints([]) }}
         onImport={() => setShowImportModal(true)}
