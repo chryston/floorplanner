@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
-import { useStore, useTemporalStore } from './store/store'
+import { useStore, useTemporalStore, activeLayout } from './store/store'
 import { FloorPlanCanvas } from './components/canvas/FloorPlanCanvas'
 import { ShapePalette } from './components/sidebar/ShapePalette'
 import { LayersPanel } from './components/sidebar/LayersPanel'
@@ -9,6 +9,10 @@ import { ScaleCalibrationModal } from './components/modals/ScaleCalibrationModal
 import { CustomShapeModal } from './components/modals/CustomShapeModal'
 import { ImportModal } from './components/modals/ImportModal'
 import { loadProject } from './utils/projectIO'
+import { DimensionLine } from './components/canvas/DimensionLine'
+import { snapPoint } from './utils/geometry'
+import type { ActiveTool, DimensionAnnotation } from './types'
+import { isWallSegment } from './types'
 
 interface CalibrationPoint {
   svgX: number
@@ -22,9 +26,19 @@ export default function App() {
   const setPixelsPerMm = useStore(s => s.setPixelsPerMm)
   const addCustomObject = useStore(s => s.addCustomObject)
   const importProject = useStore(s => s.importProject)
+  const addAnyObject = useStore(s => s.addAnyObject)
+  const deleteObject = useStore(s => s.deleteObject)
+  const deleteWall = useStore(s => s.deleteWall)
+  const selectedObjectId = useStore(s => s.selectedObjectId)
+  const snap = useStore(s => activeLayout(s.project).canvas.snap)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const zoomRef = useRef(1)
+
+  const [activeTool, _setActiveTool] = useState<ActiveTool>('select')
+  const [dimStart, setDimStart] = useState<{ x: number; y: number } | null>(null)
+  const [dimPreviewEnd, setDimPreviewEnd] = useState<{ x: number; y: number } | null>(null)
 
   const [calibrating, setCalibrating] = useState(false)
   const [calibrationPoints, setCalibrationPoints] = useState<CalibrationPoint[]>([])
@@ -33,7 +47,7 @@ export default function App() {
   const [showCustomShapeModal, setShowCustomShapeModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
 
-  // Keyboard shortcuts: Ctrl+Z undo, Ctrl+Y redo
+  // Keyboard shortcuts: Ctrl+Z undo, Ctrl+Y redo, Delete selected, Escape cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -44,10 +58,25 @@ export default function App() {
         e.preventDefault()
         useTemporalStore.getState().redo()
       }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedObjectId) {
+          const layout = activeLayout(useStore.getState().project)
+          const obj = layout.objects.find(o => o.id === selectedObjectId)
+          if (obj && isWallSegment(obj)) {
+            deleteWall(selectedObjectId)
+          } else if (obj) {
+            deleteObject(selectedObjectId)
+          }
+        }
+      }
+      if (e.key === 'Escape') {
+        setDimStart(null)
+        setDimPreviewEnd(null)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [selectedObjectId, deleteObject, deleteWall])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -101,6 +130,41 @@ export default function App() {
     setShowImportModal(false)
   }
 
+  const handleWorldMouseDown = useCallback((worldPt: { x: number; y: number }, e: React.MouseEvent) => {
+    if (activeTool === 'dimension') {
+      const pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
+      if (!dimStart) {
+        setDimStart(pt)
+      } else {
+        const dim: DimensionAnnotation = {
+          type: 'dimension',
+          id: crypto.randomUUID(),
+          start: dimStart,
+          end: pt,
+        }
+        addAnyObject(dim)
+        setDimStart(null)
+        setDimPreviewEnd(null)
+      }
+    }
+  }, [activeTool, dimStart, snap, addAnyObject])
+
+  const handleWorldMouseMove = useCallback((worldPt: { x: number; y: number }, e: React.MouseEvent) => {
+    if (activeTool === 'dimension' && dimStart) {
+      const pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
+      setDimPreviewEnd(pt)
+    }
+  }, [activeTool, dimStart, snap])
+
+  const dimensionPreview = activeTool === 'dimension' && dimStart && dimPreviewEnd ? (
+    <DimensionLine
+      dim={{ type: 'dimension', id: 'preview', start: dimStart, end: dimPreviewEnd }}
+      selected={false}
+      zoom={zoomRef.current}
+      onSelect={() => {}}
+    />
+  ) : null
+
   return (
     <div className="flex h-full flex-col bg-surface text-text-primary">
       <Toolbar
@@ -131,7 +195,11 @@ export default function App() {
             calibrating={calibrating}
             onCalibrationPoint={handleCalibrationPoint}
             svgRef={svgRef}
-            activeTool="select"
+            activeTool={activeTool}
+            onWorldMouseDown={handleWorldMouseDown}
+            onWorldMouseMove={handleWorldMouseMove}
+            onZoomChange={(z) => { zoomRef.current = z }}
+            drawingPreview={dimensionPreview}
           />
         </main>
 

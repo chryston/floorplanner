@@ -5,7 +5,8 @@ import { PlacedObject } from './PlacedObject'
 import { GridOverlay } from './GridOverlay'
 import { DimensionLabel } from './DimensionLabel'
 import type { ActiveTool } from '../../types'
-import { isFloorObject } from '../../types'
+import { isFloorObject, isDimensionAnnotation } from '../../types'
+import { DimensionLine } from './DimensionLine'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
@@ -27,6 +28,7 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
   const project = useStore(s => s.project)
   const selectedObjectId = useStore(s => s.selectedObjectId)
   const clearSelection = useStore(s => s.clearSelection)
+  const selectObject = useStore(s => s.selectObject)
 
   const layout = activeLayout(project)
   const canvas = layout.canvas
@@ -190,6 +192,17 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
             svgRef={svgRef}
             zoom={zoom}
             snapSpacingMm={canvas.snap.enabled ? canvas.snap.spacingMm : 0}
+          />
+        ))}
+
+        {/* Dimension annotations */}
+        {layout.objects.filter(isDimensionAnnotation).map(dim => (
+          <DimensionLine
+            key={dim.id}
+            dim={dim}
+            selected={selectedObjectId === dim.id}
+            zoom={zoom}
+            onSelect={() => selectObject(dim.id)}
           />
         ))}
 

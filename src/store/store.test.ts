@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, test } from 'vitest'
 import { useStore, useTemporalStore, activeLayout, makeDefaultProject } from './store'
-import { isFloorObject, WallSegment, DoorObject } from '../types'
+import { isFloorObject, WallSegment, DoorObject, DimensionAnnotation, isDimensionAnnotation } from '../types'
 
 function getStore() {
   return useStore.getState()
@@ -234,6 +234,19 @@ describe('addAnyObject', () => {
     store.getState().addAnyObject(wall)
     const layout = activeLayout(store.getState().project)
     expect(layout.objects.find(o => o.id === 'w1')).toBeDefined()
+  })
+
+  test('adds DimensionAnnotation to active layout', () => {
+    const store = createTestStore()
+    const dim: DimensionAnnotation = {
+      type: 'dimension', id: 'dim1',
+      start: { x: 0, y: 0 }, end: { x: 1000, y: 0 },
+    }
+    store.getState().addAnyObject(dim)
+    const layout = activeLayout(store.getState().project)
+    const found = layout.objects.find(o => o.id === 'dim1')
+    expect(found).toBeDefined()
+    expect(isDimensionAnnotation(found!)).toBe(true)
   })
 })
 
