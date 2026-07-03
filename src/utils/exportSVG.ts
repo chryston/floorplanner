@@ -1,5 +1,5 @@
 import { distance, formatDistance } from './geometry'
-import { isDimensionAnnotation } from '../types'
+import { isDimensionAnnotation, isWallSegment } from '../types'
 import type { AnyObject } from '../types'
 
 export function exportSVGBlob(svgEl: SVGSVGElement): Blob {
@@ -27,6 +27,9 @@ export function downloadFile(blob: Blob, filename: string): void {
 export function exportDimensionAnnotationsSVG(objects: AnyObject[]): string {
   let svg = ''
   for (const obj of objects) {
+    if (isWallSegment(obj)) {
+      svg += `<line x1="${obj.start.x}" y1="${obj.start.y}" x2="${obj.end.x}" y2="${obj.end.y}" stroke="${obj.stroke ?? '#555'}" stroke-width="${obj.thicknessMm}" stroke-linecap="square"/>\n`
+    }
     if (isDimensionAnnotation(obj)) {
       const { start, end } = obj
       const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }

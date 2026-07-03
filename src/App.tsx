@@ -10,8 +10,8 @@ import { CustomShapeModal } from './components/modals/CustomShapeModal'
 import { ImportModal } from './components/modals/ImportModal'
 import { loadProject } from './utils/projectIO'
 import { DimensionLine } from './components/canvas/DimensionLine'
-import { snapPoint } from './utils/geometry'
-import type { ActiveTool, DimensionAnnotation } from './types'
+import { snapPoint, constrainAngle } from './utils/geometry'
+import type { ActiveTool, DimensionAnnotation, WallSegment } from './types'
 import { isWallSegment } from './types'
 
 interface CalibrationPoint {
@@ -39,6 +39,11 @@ export default function App() {
   const [activeTool, _setActiveTool] = useState<ActiveTool>('select')
   const [dimStart, setDimStart] = useState<{ x: number; y: number } | null>(null)
   const [dimPreviewEnd, setDimPreviewEnd] = useState<{ x: number; y: number } | null>(null)
+
+  // Wall drawing state
+  const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null)
+  const [wallPreviewEnd, setWallPreviewEnd] = useState<{ x: number; y: number } | null>(null)
+  const DEFAULT_WALL_THICKNESS = 100
 
   const [calibrating, setCalibrating] = useState(false)
   const [calibrationPoints, setCalibrationPoints] = useState<CalibrationPoint[]>([])
@@ -70,6 +75,8 @@ export default function App() {
         }
       }
       if (e.key === 'Escape') {
+        setWallStart(null)
+        setWallPreviewEnd(null)
         setDimStart(null)
         setDimPreviewEnd(null)
       }
@@ -131,6 +138,24 @@ export default function App() {
   }
 
   const handleWorldMouseDown = useCallback((worldPt: { x: number; y: number }, e: React.MouseEvent) => {
+    if (activeTool === 'wall') {
+      let pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
+      if (e.shiftKey && wallStart) pt = constrainAngle(wallStart, pt, 45)
+      if (!wallStart) {
+        setWallStart(pt)
+      } else {
+        const wall: WallSegment = {
+          type: 'wall',
+          id: crypto.randomUUID(),
+          name: 'Wall',
+          start: wallStart,
+          end: pt,
+          thicknessMm: DEFAULT_WALL_THICKNESS,
+        }
+        addAnyObject(wall)
+        setWallStart(pt)
+      }
+    }
     if (activeTool === 'dimension') {
       const pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
       if (!dimStart) {
@@ -147,14 +172,19 @@ export default function App() {
         setDimPreviewEnd(null)
       }
     }
-  }, [activeTool, dimStart, snap, addAnyObject])
+  }, [activeTool, dimStart, wallStart, snap, addAnyObject])
 
   const handleWorldMouseMove = useCallback((worldPt: { x: number; y: number }, e: React.MouseEvent) => {
+    if (activeTool === 'wall' && wallStart) {
+      let pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
+      if (e.shiftKey) pt = constrainAngle(wallStart, pt, 45)
+      setWallPreviewEnd(pt)
+    }
     if (activeTool === 'dimension' && dimStart) {
       const pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
       setDimPreviewEnd(pt)
     }
-  }, [activeTool, dimStart, snap])
+  }, [activeTool, dimStart, wallStart, snap])
 
   const dimensionPreview = activeTool === 'dimension' && dimStart && dimPreviewEnd ? (
     <DimensionLine
@@ -164,6 +194,18 @@ export default function App() {
       onSelect={() => {}}
     />
   ) : null
+
+  const wallPreview = activeTool === 'wall' && wallStart && wallPreviewEnd ? (
+    <line
+      x1={wallStart.x} y1={wallStart.y}
+      x2={wallPreviewEnd.x} y2={wallPreviewEnd.y}
+      stroke="#0078d4" strokeWidth={DEFAULT_WALL_THICKNESS}
+      strokeLinecap="square" opacity={0.5}
+      style={{ pointerEvents: 'none' }}
+    />
+  ) : null
+
+  const drawingPreview = dimensionPreview ?? wallPreview
 
   return (
     <div className="flex h-full flex-col bg-surface text-text-primary">
@@ -199,7 +241,7 @@ export default function App() {
             onWorldMouseDown={handleWorldMouseDown}
             onWorldMouseMove={handleWorldMouseMove}
             onZoomChange={(z) => { zoomRef.current = z }}
-            drawingPreview={dimensionPreview}
+            drawingPreview={drawingPreview}
           />
         </main>
 
