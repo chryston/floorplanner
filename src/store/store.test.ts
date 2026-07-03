@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, test } from 'vitest'
 import { useStore, useTemporalStore, activeLayout, makeDefaultProject } from './store'
-import { isFloorObject } from '../types'
+import { isFloorObject, WallSegment, DoorObject } from '../types'
 
 function getStore() {
   return useStore.getState()
+}
+
+function createTestStore() {
+  useStore.setState({ project: makeDefaultProject(), selectedObjectId: null })
+  useTemporalStore.getState().clear()
+  return useStore
 }
 
 beforeEach(() => {
@@ -197,5 +203,58 @@ describe('importProject', () => {
     getStore().importProject(newProject)
     expect(getStore().project.name).toBe('Imported')
     expect(getStore().selectedObjectId).toBeNull()
+  })
+})
+
+describe('grid and snap settings', () => {
+  test('setGridSettings updates active layout canvas', () => {
+    const store = createTestStore()
+    store.getState().setGridSettings({ enabled: false, minorSpacingMm: 250 })
+    const layout = activeLayout(store.getState().project)
+    expect(layout.canvas.grid.enabled).toBe(false)
+    expect(layout.canvas.grid.minorSpacingMm).toBe(250)
+  })
+
+  test('setSnapSettings updates active layout canvas', () => {
+    const store = createTestStore()
+    store.getState().setSnapSettings({ enabled: false })
+    const layout = activeLayout(store.getState().project)
+    expect(layout.canvas.snap.enabled).toBe(false)
+  })
+})
+
+describe('addAnyObject', () => {
+  test('adds WallSegment to active layout', () => {
+    const store = createTestStore()
+    const wall: WallSegment = {
+      type: 'wall', id: 'w1', name: 'Wall',
+      start: { x: 0, y: 0 }, end: { x: 500, y: 0 },
+      thicknessMm: 100,
+    }
+    store.getState().addAnyObject(wall)
+    const layout = activeLayout(store.getState().project)
+    expect(layout.objects.find(o => o.id === 'w1')).toBeDefined()
+  })
+})
+
+describe('deleteWall', () => {
+  test('deletes wall and attached doors/windows', () => {
+    const store = createTestStore()
+    const wall: WallSegment = {
+      type: 'wall', id: 'w1', name: 'W',
+      start: { x: 0, y: 0 }, end: { x: 1000, y: 0 },
+      thicknessMm: 100,
+    }
+    const door: DoorObject = {
+      type: 'door', id: 'd1', name: 'D', wallId: 'w1',
+      offsetMm: 200, widthMm: 900,
+      swingDirection: 'left', swingAngleDeg: 90,
+    }
+    store.getState().addAnyObject(wall)
+    store.getState().addAnyObject(door)
+    store.getState().deleteWall('w1')
+    const layout = activeLayout(store.getState().project)
+    expect(layout.objects.find(o => o.id === 'w1')).toBeUndefined()
+    expect(layout.objects.find(o => o.id === 'd1')).toBeUndefined()
   })
 })

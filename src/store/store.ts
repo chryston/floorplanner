@@ -4,11 +4,11 @@ import { temporal } from 'zundo'
 import { produce } from 'immer'
 import { nanoid } from 'nanoid'
 import { shallow } from 'zustand/shallow'
-import type { FloorProject, FloorLayout, FloorLayer, FloorObject, ShapeType } from '../types'
+import type { FloorProject, FloorLayout, FloorLayer, FloorObject, ShapeType, GridSettings, SnapSettings, AnyObject, DoorObject, WindowObject } from '../types'
 import { isFloorObject } from '../types'
 import { getShapeDefaults } from '../data/shapes'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 function makeDefaultLayer(): FloorLayer {
   return { id: nanoid(), name: 'Default', visible: true, locked: false, order: 0 }
@@ -69,7 +69,7 @@ interface StoreState {
   // Object actions
   addObject: (shapeType: ShapeType) => void
   addCustomObject: (name: string, shapeType: ShapeType, width: number, depth: number) => void
-  updateObject: (objectId: string, patch: Partial<FloorObject>) => void
+  updateObject: (objectId: string, patch: Partial<AnyObject>) => void
   deleteObject: (objectId: string) => void
   // Layer actions
   addLayer: (name: string) => void
@@ -82,6 +82,10 @@ interface StoreState {
   setCanvasImage: (image: FloorProject['layouts'][0]['canvas']['image']) => void
   setPixelsPerMm: (ppm: number) => void
   clearCanvas: () => void
+  setGridSettings: (patch: Partial<GridSettings>) => void
+  setSnapSettings: (patch: Partial<SnapSettings>) => void
+  addAnyObject: (obj: AnyObject) => void
+  deleteWall: (wallId: string) => void
   // Project IO
   importProject: (project: FloorProject) => void
   // Selection (not persisted)
@@ -211,7 +215,7 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
     const obj = layout.objects.find(o => o.id === objectId)
     if (obj) {
       Object.assign(obj, patch)
-      if (isFloorObject(obj) && patch.rotation !== undefined) {
+      if (isFloorObject(obj) && 'rotation' in patch && patch.rotation !== undefined) {
         obj.rotation = ((patch.rotation % 360) + 360) % 360
       }
     }
@@ -291,6 +295,33 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
     const layout = s.project.layouts.find(l => l.id === s.project.activeLayoutId) ?? s.project.layouts[0]
     layout.canvas.image = null
     layout.canvas.pixelsPerMm = null
+    s.project.updatedAt = new Date().toISOString()
+  }),
+
+  setGridSettings: (patch) => set(s => {
+    const layout = activeLayout(s.project)
+    Object.assign(layout.canvas.grid, patch)
+    s.project.updatedAt = new Date().toISOString()
+  }),
+
+  setSnapSettings: (patch) => set(s => {
+    const layout = activeLayout(s.project)
+    Object.assign(layout.canvas.snap, patch)
+    s.project.updatedAt = new Date().toISOString()
+  }),
+
+  addAnyObject: (obj) => set(s => {
+    const layout = activeLayout(s.project)
+    layout.objects.push(obj)
+    s.project.updatedAt = new Date().toISOString()
+  }),
+
+  deleteWall: (wallId) => set(s => {
+    const layout = activeLayout(s.project)
+    layout.objects = layout.objects.filter(
+      o => o.id !== wallId &&
+        !('wallId' in o && (o as DoorObject | WindowObject).wallId === wallId)
+    )
     s.project.updatedAt = new Date().toISOString()
   }),
 
