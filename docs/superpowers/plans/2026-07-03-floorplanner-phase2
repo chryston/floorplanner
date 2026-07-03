@@ -1,0 +1,681 @@
+# Floorplanner Static App: Grid, Snap, Dimensions, Walls, Doors, and Windows
+
+## Overview
+
+Upgrade the existing static lightweight floor-planning app into a more practical 2D floor-planning tool.
+
+The app currently behaves mostly like a calibrated SVG shape editor. This spec adds the next set of floor-planning mechanics:
+
+1. Grid overlay
+2. Snap-to-grid
+3. Selected-object dimension labels
+4. Dimension-line annotations
+5. Improved wall drawing
+6. Doors and windows attached to walls
+
+The implementation must preserve the existing lightweight static architecture.
+
+## Token and Scope Discipline
+
+Be concise and implementation-focused.
+
+Do not spend excessive tokens on broad explanations, repeated context, speculative alternatives, or unchanged code.
+
+Prefer small, verifiable changes.
+
+When reporting progress or final results, use this compact format:
+
+1. What changed
+2. Files changed
+3. How to test
+4. Known limitations
+
+Do not rewrite the app. Do not replace the rendering engine. Do not add large dependencies unless clearly necessary.
+
+## Current App
+
+Repository:
+
+```text
+https://github.com/chryston/floorplanner
+```
+
+Live app:
+
+```text
+https://chryston.github.io/floorplanner/
+```
+
+Current architecture:
+
+* React
+* TypeScript
+* Vite
+* Zustand
+* Immer
+* Zundo
+* Custom SVG rendering
+* LocalStorage persistence
+* JSON import/export
+* SVG export
+
+Existing app capabilities include:
+
+* background image upload
+* scale calibration
+* pan and zoom
+* multiple layouts
+* geometric shapes
+* custom rectangular objects
+* drag, resize, rotate
+* layers
+* properties panel
+* undo/redo
+* local persistence
+* JSON import/export
+* SVG export
+
+Do not remove or regress these features.
+
+## Goals
+
+### Product Goal
+
+Make the app feel more like a floor-planning tool, not only a calibrated drawing tool.
+
+### Technical Goal
+
+Add floor-planning primitives while preserving:
+
+* static GitHub Pages deployability
+* React + SVG rendering
+* JSON compatibility
+* undo/redo behavior
+* LocalStorage persistence
+* low dependency footprint
+
+## Non-Goals
+
+Do not implement:
+
+* backend services
+* user accounts
+* cloud project storage
+* collaboration
+* 3D rendering
+* photorealistic rendering
+* Fabric.js
+* Konva.js
+* Three.js
+* CAD/DXF export
+* room auto-detection in this phase
+* furniture catalog expansion in this phase
+
+## Feature 1: Grid Overlay
+
+Add a visible SVG grid behind all plan objects.
+
+Default settings:
+
+```ts
+grid: {
+  enabled: true;
+  minorSpacingMm: 100;
+  majorSpacingMm: 1000;
+  showMinor: true;
+  showMajor: true;
+}
+```
+
+Requirements:
+
+* grid renders behind objects
+* grid pans with the canvas
+* grid scales with zoom
+* grid aligns to world coordinates in millimetres
+* grid can be toggled on/off
+* minor spacing can be selected from:
+
+  * 50 mm
+  * 100 mm
+  * 250 mm
+  * 500 mm
+  * 1000 mm
+* major spacing should remain a multiple of minor spacing
+* settings persist in LocalStorage and JSON export/import
+* grid is not included in SVG export by default
+
+Implementation preference:
+
+* Use SVG patterns if practical.
+* Avoid rendering thousands of individual grid lines.
+
+Acceptance criteria:
+
+* Grid is visible on load.
+* Grid stays aligned while panning.
+* Grid scales correctly while zooming.
+* Grid can be hidden and shown.
+* Grid spacing changes correctly.
+* Grid settings survive reload.
+
+## Feature 2: Snap-to-Grid
+
+Add snapping for floor-plan editing.
+
+Default settings:
+
+```ts
+snap: {
+  enabled: true;
+  spacingMm: 100;
+}
+```
+
+Requirements:
+
+Snapping applies to:
+
+* object creation
+* object dragging
+* object resizing
+* dimension-line endpoints
+* wall start/end points
+* door/window placement along walls where applicable
+
+Modifier behavior:
+
+* Alt/Option temporarily disables snapping.
+* Shift is reserved for angle constraint in wall drawing.
+
+Add helpers:
+
+```ts
+snapValue(value: number, spacing: number): number
+
+snapPoint(
+  point: { x: number; y: number },
+  spacing: number
+): { x: number; y: number }
+```
+
+Acceptance criteria:
+
+* Moving objects snaps to the active spacing.
+* Resizing objects snaps dimensions/handles.
+* New objects are placed on snapped coordinates.
+* Holding Alt/Option bypasses snapping.
+* Snap setting survives reload.
+
+## Feature 3: Selected-Object Dimension Labels
+
+Show dimensions on the canvas when an object is selected.
+
+Requirements:
+
+* show width and depth
+* show rotation if non-zero
+* update live during drag/resize
+* remain readable at different zoom levels
+* not block pointer interaction
+* hidden when nothing is selected
+* not exported by default
+
+Example labels:
+
+```text
+1200 x 600 mm
+Rot 45 deg
+```
+
+Implementation preference:
+
+* Use SVG text if simple.
+* Use pointer-events="none" for overlays.
+* Keep text size readable regardless of zoom.
+
+Acceptance criteria:
+
+* Selecting an object shows dimensions.
+* Resizing updates dimensions immediately.
+* Moving object keeps labels attached.
+* Rotated objects still show labels.
+* Labels do not interfere with selection or dragging.
+
+## Feature 4: Dimension-Line Tool
+
+Add a persistent dimension annotation tool.
+
+User flow:
+
+1. User selects Dimension tool.
+2. User clicks first point.
+3. User moves mouse and sees preview.
+4. User clicks second point.
+5. Dimension annotation is created.
+6. Annotation displays measured distance.
+
+Preferred data model:
+
+```ts
+type DimensionAnnotation = {
+  id: string;
+  type: 'dimension';
+  name?: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  offsetMm?: number;
+  layerId?: string;
+  locked?: boolean;
+  visible?: boolean;
+  memo?: string;
+};
+```
+
+If a separate annotation collection is too disruptive, extend the existing drawable object model safely.
+
+Requirements:
+
+* supports horizontal, vertical, and diagonal measurements
+* start/end stored in millimetres
+* distance label centered on line
+* tick marks or arrowheads at endpoints
+* label background for readability
+* selectable
+* deletable
+* movable if practical
+* included in undo/redo
+* persists in LocalStorage
+* included in JSON export/import
+* included in SVG export
+
+Distance formatting:
+
+* under 1000 mm: `850 mm`
+* 1000 mm and above: `1.20 m`
+
+Acceptance criteria:
+
+* Dimension tool creates a dimension line.
+* Preview appears before second click.
+* Displayed distance is correct.
+* Dimension can be selected and deleted.
+* Dimension survives reload.
+* Dimension exports to JSON and SVG.
+* Undo/redo works.
+
+## Feature 5: Improved Wall Drawing
+
+Improve the wall tool so walls are drawn as floor-plan wall segments.
+
+Current legacy wall shapes must continue to render.
+
+New wall data model:
+
+```ts
+type WallObject = {
+  id: string;
+  type: 'wall';
+  name: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  thicknessMm: number;
+  heightMm?: number;
+  layerId?: string;
+  locked?: boolean;
+  visible?: boolean;
+  stroke?: string;
+  fill?: string;
+  memo?: string;
+};
+```
+
+Default wall thickness:
+
+```text
+100 mm
+```
+
+User flow:
+
+1. User selects Wall tool.
+2. User clicks start point.
+3. User moves mouse and sees wall preview.
+4. User clicks endpoint.
+5. Wall is created.
+6. Endpoint becomes start point for next wall segment.
+7. Esc exits wall drawing.
+
+Requirements:
+
+* wall has start and end points
+* wall thickness editable
+* wall length shown while drawing
+* endpoints snap to grid
+* endpoints snap to nearby wall endpoints if practical
+* Shift constrains angle to 45-degree increments
+* Alt/Option disables snapping
+* selected wall shows endpoint handles
+* endpoints can be dragged
+* entire wall can be moved
+* wall length, thickness, start/end, and angle shown in properties panel
+* legacy wall objects continue to work
+* JSON import/export remains compatible
+* SVG export includes new walls
+
+Acceptance criteria:
+
+* Click-to-draw wall works.
+* Continuous wall drawing works.
+* Esc exits wall mode.
+* Shift angle constraint works.
+* Length preview appears.
+* Wall thickness can be edited.
+* Wall endpoints can be edited.
+* Existing saved wall shapes still render.
+* Undo/redo works.
+* JSON and SVG export work.
+
+## Feature 6: Doors and Windows Attached to Walls
+
+Add semantic door and window objects attached to wall segments.
+
+Data model:
+
+```ts
+type DoorObject = {
+  id: string;
+  type: 'door';
+  name: string;
+  wallId: string;
+  offsetMm: number;
+  widthMm: number;
+  swingDirection: 'left' | 'right';
+  swingAngleDeg: number;
+  layerId?: string;
+  locked?: boolean;
+  visible?: boolean;
+  memo?: string;
+};
+
+type WindowObject = {
+  id: string;
+  type: 'window';
+  name: string;
+  wallId: string;
+  offsetMm: number;
+  widthMm: number;
+  layerId?: string;
+  locked?: boolean;
+  visible?: boolean;
+  memo?: string;
+};
+```
+
+Defaults:
+
+```text
+door width: 900 mm
+door swing angle: 90 deg
+door swing direction: left
+window width: 1200 mm
+```
+
+User flow:
+
+1. User selects Door or Window tool.
+2. User hovers over a wall.
+3. Placement preview appears on nearest wall point.
+4. User clicks to place.
+5. Door/window attaches to wall.
+6. User can drag it along the wall.
+7. User can edit width and relevant properties.
+
+Placement rules:
+
+* calculate closest point on wall
+* clamp offset so object stays within wall length
+* store position as offset from wall start
+* derive rendered position from parent wall geometry
+* align symbol to wall angle
+
+Door rendering:
+
+* draw door leaf
+* draw swing arc
+* align to wall
+* visual overlay is acceptable
+* do not implement boolean wall cutouts unless simple
+
+Window rendering:
+
+* draw clear window symbol centered on wall
+* align to wall
+* visually distinguish from wall
+
+Requirements:
+
+* selectable
+* deletable
+* draggable along parent wall
+* layer/visibility/lock behavior consistent with other objects
+* width editable
+* door swing direction editable
+* door swing angle editable
+* persists in LocalStorage
+* included in JSON import/export
+* included in SVG export
+* undo/redo works
+
+Acceptance criteria:
+
+* Door can be placed on a wall.
+* Window can be placed on a wall.
+* Door/window follows wall angle.
+* Door/window can be dragged along the wall.
+* Width can be edited.
+* Door swing direction can be changed.
+* Door/window survives reload.
+* Door/window exports to JSON and SVG.
+* Undo/redo works.
+
+## State and Persistence
+
+New persistent fields:
+
+```ts
+grid
+snap
+dimension annotations
+new wall objects
+door objects
+window objects
+```
+
+Update:
+
+* Zustand store
+* persistence configuration
+* JSON import/export
+* schema validation or migration logic
+* SVG export
+
+Add project version migration if needed.
+
+Compatibility rules:
+
+* older saved projects must still load
+* old wall shape objects must still render
+* new wall segment format can coexist with old wall shapes
+* missing grid/snap settings should receive defaults on load
+
+## Keyboard Shortcuts
+
+Add or preserve:
+
+```text
+Ctrl/Cmd+Z: undo
+Ctrl/Cmd+Y: redo
+Ctrl/Cmd+Shift+Z: redo
+Esc: cancel current drawing tool
+Delete/Backspace: delete selected object or annotation
+Alt/Option: temporarily disable snapping
+Shift: constrain wall angle while drawing
+```
+
+Do not break existing shortcuts.
+
+## UI Changes
+
+Add toolbar controls:
+
+* Grid toggle
+* Snap toggle
+* Grid spacing dropdown
+* Dimension tool
+* Wall tool
+* Door tool
+* Window tool
+
+Add properties panel support:
+
+For wall:
+
+* length
+* thickness
+* start x/y
+* end x/y
+* angle
+
+For dimension:
+
+* measured distance
+* start x/y
+* end x/y
+* optional label/name
+
+For door:
+
+* width
+* swing direction
+* swing angle
+* attached wall
+
+For window:
+
+* width
+* attached wall
+
+Keep UI compact.
+
+## Engineering Constraints
+
+Use the existing code style and project structure.
+
+Prefer utility functions for geometry:
+
+```ts
+distance(a, b)
+angleBetween(a, b)
+projectPointToSegment(point, start, end)
+clamp(value, min, max)
+pointAlongSegment(start, end, offsetMm)
+snapValue(value, spacing)
+snapPoint(point, spacing)
+formatDistance(mm)
+```
+
+Avoid `any`.
+
+Avoid large dependencies.
+
+Keep changes testable and isolated.
+
+## Testing
+
+Run existing checks first.
+
+Expected commands may include:
+
+```bash
+npm install
+npm run build
+npm run lint
+npm test
+```
+
+Use available project scripts. Do not invent unavailable scripts without checking `package.json`.
+
+Manual test checklist:
+
+### Existing behavior
+
+* app loads
+* background upload works
+* calibration works
+* pan/zoom works
+* layouts work
+* layers work
+* existing objects render
+* drag works
+* resize works
+* rotate works
+* undo/redo works
+* LocalStorage persistence works
+* JSON import/export works
+* SVG export works
+
+### New behavior
+
+* grid appears
+* grid can be hidden
+* grid spacing changes
+* snap works for moving objects
+* Alt/Option bypasses snap
+* selected object dimension labels appear
+* dimension tool creates lines
+* dimension lines persist and export
+* wall tool draws connected walls
+* Esc exits wall drawing
+* Shift constrains wall angle
+* wall endpoints can be edited
+* wall thickness can be edited
+* doors attach to walls
+* windows attach to walls
+* doors/windows move along walls
+* doors/windows persist and export
+
+## Implementation Notes
+
+Suggested implementation order:
+
+1. geometry utilities
+2. grid state and renderer
+3. snap state and snap helpers
+4. snap applied to existing object interactions
+5. selected-object dimension labels
+6. dimension annotation model and renderer
+7. dimension drawing interaction
+8. new wall model and wall renderer
+9. wall drawing interaction
+10. wall endpoint editing
+11. door/window model and renderers
+12. door/window placement interaction
+13. properties panel updates
+14. import/export updates
+15. migration/default loading
+16. keyboard shortcut polish
+17. manual test pass
+
+## Deliverable
+
+Return a concise summary:
+
+1. What changed
+2. Files changed
+3. New types/state fields
+4. Migration behavior
+5. How to test
+6. Known limitations
+
+Keep the final response concise. Avoid excessive explanation.

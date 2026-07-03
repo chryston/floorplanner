@@ -5,6 +5,7 @@ import { produce } from 'immer'
 import { nanoid } from 'nanoid'
 import { shallow } from 'zustand/shallow'
 import type { FloorProject, FloorLayout, FloorLayer, FloorObject, ShapeType } from '../types'
+import { isFloorObject } from '../types'
 import { getShapeDefaults } from '../data/shapes'
 
 export const SCHEMA_VERSION = 1
@@ -19,7 +20,21 @@ function makeDefaultLayout(name: string): FloorLayout {
     name,
     objects: [],
     layers: [makeDefaultLayer()],
-    canvas: { image: null, pixelsPerMm: null },
+    canvas: {
+      image: null,
+      pixelsPerMm: null,
+      grid: {
+        enabled: true,
+        minorSpacingMm: 100,
+        majorSpacingMm: 1000,
+        showMinor: true,
+        showMajor: true,
+      },
+      snap: {
+        enabled: true,
+        spacingMm: 100,
+      },
+    },
   }
 }
 
@@ -196,7 +211,7 @@ const stateCreator = (set: (fn: (s: StoreState) => void) => void): StoreState =>
     const obj = layout.objects.find(o => o.id === objectId)
     if (obj) {
       Object.assign(obj, patch)
-      if (patch.rotation !== undefined) {
+      if (isFloorObject(obj) && patch.rotation !== undefined) {
         obj.rotation = ((patch.rotation % 360) + 360) % 360
       }
     }

@@ -1,14 +1,15 @@
 import React, { useCallback, useRef } from 'react'
 import { useStore } from '../../store/store'
 import { renderShape } from '../../utils/renderShape'
-import type { FloorObject } from '../../types'
+import type { AnyObject } from '../../types'
+import { isFloorObject } from '../../types'
 
 const HANDLE_SIZE = 8
 
 type HandleDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 
 interface Props {
-  object: FloorObject
+  object: AnyObject
   isSelected: boolean
   svgRef: React.RefObject<SVGSVGElement | null>
   zoom: number
@@ -24,6 +25,11 @@ function getSvgScale(svgEl: SVGSVGElement): number {
 export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
   const updateObject = useStore(s => s.updateObject)
   const selectObject = useStore(s => s.selectObject)
+
+  // Only FloorObjects are rendered as placed objects
+  if (!isFloorObject(object)) {
+    return null
+  }
 
   const { id, x, y, width, depth, rotation, name, locked } = object
 

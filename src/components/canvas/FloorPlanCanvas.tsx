@@ -68,7 +68,7 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef }: Pro
 
   const visibleLayerIds = new Set(layout.layers.filter(l => l.visible).map(l => l.id))
   const sortedObjects = [...layout.objects]
-    .filter(o => o.visible !== false && visibleLayerIds.has(o.layerId))
+    .filter(o => o.visible !== false && (o.layerId === undefined || visibleLayerIds.has(o.layerId)))
     .sort((a, b) => {
       const la = layout.layers.find(l => l.id === a.layerId)?.order ?? 0
       const lb = layout.layers.find(l => l.id === b.layerId)?.order ?? 0

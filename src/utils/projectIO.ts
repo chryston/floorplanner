@@ -1,6 +1,19 @@
-import type { FloorProject } from '../types'
+import type { FloorProject, GridSettings, SnapSettings } from '../types'
 import { SCHEMA_VERSION } from '../store/store'
 import { downloadFile } from './exportSVG'
+
+const DEFAULT_GRID: GridSettings = {
+  enabled: true,
+  minorSpacingMm: 100,
+  majorSpacingMm: 1000,
+  showMinor: true,
+  showMajor: true,
+}
+
+const DEFAULT_SNAP: SnapSettings = {
+  enabled: true,
+  spacingMm: 100,
+}
 
 export class ProjectImportError extends Error {
   constructor(message: string) {
@@ -19,15 +32,26 @@ export function downloadProjectJSON(project: FloorProject, name?: string): void 
   downloadFile(blob, filename)
 }
 
-// Migrate from an older schema version to current. No-op at v1.
+// Migrate from an older schema version to current.
 export function migrateProject(
   raw: Record<string, unknown>,
   fromVersion: number
 ): FloorProject {
+  // v1 → v2: inject grid/snap into every layout's canvas
+  if (fromVersion === 1) {
+    const layouts = (raw.layouts as Record<string, unknown>[]) ?? []
+    for (const layout of layouts) {
+      const canvas = (layout.canvas ?? {}) as Record<string, unknown>
+      if (!canvas.grid) canvas.grid = { ...DEFAULT_GRID }
+      if (!canvas.snap) canvas.snap = { ...DEFAULT_SNAP }
+      layout.canvas = canvas
+    }
+    raw.schemaVersion = 2
+    return raw as unknown as FloorProject
+  }
   if (fromVersion === SCHEMA_VERSION) {
     return raw as unknown as FloorProject
   }
-  // Future: add migration steps here
   throw new ProjectImportError(`Cannot migrate from schema version ${fromVersion}`)
 }
 

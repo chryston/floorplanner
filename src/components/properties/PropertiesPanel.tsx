@@ -1,5 +1,6 @@
 import { useStore, activeLayout } from '../../store/store'
-import type { FloorObject } from '../../types'
+import type { AnyObject, FloorObject } from '../../types'
+import { isFloorObject } from '../../types'
 
 function NumericField({
   label,
@@ -38,7 +39,7 @@ export function PropertiesPanel() {
   const clearSelection = useStore(s => s.clearSelection)
 
   const layout = activeLayout(project)
-  const obj: FloorObject | undefined = selectedObjectId
+  const obj: AnyObject | undefined = selectedObjectId
     ? layout.objects.find(o => o.id === selectedObjectId)
     : undefined
 
@@ -46,6 +47,17 @@ export function PropertiesPanel() {
     return (
       <div className="p-4 text-text-muted text-sm">
         Select an object to view its properties.
+      </div>
+    )
+  }
+
+  // Only FloorObjects are editable in the properties panel for now
+  if (!isFloorObject(obj)) {
+    return (
+      <div className="p-4 text-text-muted text-sm">
+        {obj.name && <p>Name: {obj.name}</p>}
+        <p>Type: {(obj as any).type || 'unknown'}</p>
+        <p>Properties for this object type are not yet editable.</p>
       </div>
     )
   }

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useStore, useTemporalStore, activeLayout, makeDefaultProject } from './store'
+import { isFloorObject } from '../types'
 
 function getStore() {
   return useStore.getState()
@@ -66,24 +67,37 @@ describe('object actions', () => {
     getStore().addObject('circle')
     const layout = activeLayout(getStore().project)
     expect(layout.objects).toHaveLength(1)
-    expect(layout.objects[0].shapeType).toBe('circle')
+    const obj = layout.objects[0]
+    expect(isFloorObject(obj)).toBe(true)
+    if (isFloorObject(obj)) {
+      expect(obj.shapeType).toBe('circle')
+    }
   })
 
   it('addObject sets width/depth from shape defaults', () => {
     getStore().addObject('wall')
     const obj = activeLayout(getStore().project).objects[0]
-    expect(obj.width).toBe(300)
-    expect(obj.depth).toBe(10)
+    expect(isFloorObject(obj)).toBe(true)
+    if (isFloorObject(obj)) {
+      expect(obj.width).toBe(300)
+      expect(obj.depth).toBe(10)
+    }
   })
 
   it('updateObject merges partial fields', () => {
     getStore().addObject('rectangle')
     const obj = activeLayout(getStore().project).objects[0]
-    getStore().updateObject(obj.id, { name: 'Sofa', width: 180 })
-    const updated = activeLayout(getStore().project).objects[0]
-    expect(updated.name).toBe('Sofa')
-    expect(updated.width).toBe(180)
-    expect(updated.depth).toBe(obj.depth) // unchanged
+    expect(isFloorObject(obj)).toBe(true)
+    if (isFloorObject(obj)) {
+      getStore().updateObject(obj.id, { name: 'Sofa', width: 180 })
+      const updated = activeLayout(getStore().project).objects[0]
+      expect(updated.name).toBe('Sofa')
+      expect(isFloorObject(updated)).toBe(true)
+      if (isFloorObject(updated)) {
+        expect(updated.width).toBe(180)
+        expect(updated.depth).toBe(obj.depth) // unchanged
+      }
+    }
   })
 
   it('deleteObject removes the object', () => {
@@ -163,7 +177,21 @@ describe('importProject', () => {
         name: 'Ground Floor',
         objects: [],
         layers: [{ id: 'ly1', name: 'Default', visible: true, locked: false, order: 0 }],
-        canvas: { image: null, pixelsPerMm: null },
+        canvas: {
+          image: null,
+          pixelsPerMm: null,
+          grid: {
+            enabled: true,
+            minorSpacingMm: 100,
+            majorSpacingMm: 1000,
+            showMinor: true,
+            showMajor: true,
+          },
+          snap: {
+            enabled: true,
+            spacingMm: 100,
+          },
+        },
       }],
     }
     getStore().importProject(newProject)
