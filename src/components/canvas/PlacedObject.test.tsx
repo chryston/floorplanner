@@ -33,7 +33,7 @@ describe('PlacedObject', () => {
     const svgRef = { current: document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement }
     const { container } = render(
       <svg>
-        <PlacedObject object={makeObj()} isSelected={false} svgRef={svgRef} zoom={1} />
+        <PlacedObject object={makeObj()} isSelected={false} svgRef={svgRef} zoom={1} snapSpacingMm={0} />
       </svg>
     )
     expect(container.querySelector('g')).toBeTruthy()
@@ -43,7 +43,7 @@ describe('PlacedObject', () => {
     const svgRef = { current: document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement }
     const { container } = render(
       <svg>
-        <PlacedObject object={makeObj({ rotation: 45 })} isSelected={false} svgRef={svgRef} zoom={1} />
+        <PlacedObject object={makeObj({ rotation: 45 })} isSelected={false} svgRef={svgRef} zoom={1} snapSpacingMm={0} />
       </svg>
     )
     const g = container.querySelector('g')!
@@ -54,7 +54,7 @@ describe('PlacedObject', () => {
     const svgRef = { current: document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement }
     const { container } = render(
       <svg>
-        <PlacedObject object={makeObj()} isSelected={false} svgRef={svgRef} zoom={1} />
+        <PlacedObject object={makeObj()} isSelected={false} svgRef={svgRef} zoom={1} snapSpacingMm={0} />
       </svg>
     )
     const group = container.querySelector('g[data-object-id]')!
@@ -66,7 +66,7 @@ describe('PlacedObject', () => {
     const svgRef = { current: document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement }
     const { container } = render(
       <svg>
-        <PlacedObject object={makeObj()} isSelected={true} svgRef={svgRef} zoom={1} />
+        <PlacedObject object={makeObj()} isSelected={true} svgRef={svgRef} zoom={1} snapSpacingMm={0} />
       </svg>
     )
     // Resize handles are rects with data-handle attribute

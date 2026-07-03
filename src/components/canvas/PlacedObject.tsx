@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react'
 import { useStore } from '../../store/store'
 import { renderShape } from '../../utils/renderShape'
+import { snapPoint, snapValue } from '../../utils/geometry'
 import type { AnyObject } from '../../types'
 import { isFloorObject } from '../../types'
 
@@ -13,6 +14,7 @@ interface Props {
   isSelected: boolean
   svgRef: React.RefObject<SVGSVGElement | null>
   zoom: number
+  snapSpacingMm: number
 }
 
 function getSvgScale(svgEl: SVGSVGElement): number {
@@ -22,7 +24,7 @@ function getSvgScale(svgEl: SVGSVGElement): number {
   return viewBox.width / rect.width
 }
 
-export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
+export function PlacedObject({ object, isSelected, svgRef, zoom, snapSpacingMm }: Props) {
   const updateObject = useStore(s => s.updateObject)
   const selectObject = useStore(s => s.selectObject)
 
@@ -51,7 +53,10 @@ export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
       if (!dragStart.current) return
       const dx = mv.clientX * scale - dragStart.current.mx
       const dy = mv.clientY * scale - dragStart.current.my
-      updateObject(id, { x: dragStart.current.ox + dx, y: dragStart.current.oy + dy })
+      const rawX = dragStart.current.ox + dx
+      const rawY = dragStart.current.oy + dy
+      const snapped = mv.altKey ? { x: rawX, y: rawY } : snapPoint({ x: rawX, y: rawY }, snapSpacingMm)
+      updateObject(id, { x: snapped.x, y: snapped.y })
     }
     const onUp = () => {
       dragStart.current = null
@@ -60,7 +65,7 @@ export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [id, x, y, locked, zoom, svgRef, updateObject, selectObject])
+  }, [id, x, y, locked, zoom, svgRef, updateObject, selectObject, snapSpacingMm])
 
   // Projects mouse deltas into object-local (unrotated) space before modifying width/depth
   const makeResizeHandler = useCallback((dir: HandleDir) => (e: React.MouseEvent) => {
@@ -104,7 +109,12 @@ export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
       currentX = newX
       currentY = newY
 
-      updateObject(id, { width: newW, depth: newD, x: newX, y: newY })
+      const snappedW = e.altKey ? newW : snapValue(newW, snapSpacingMm)
+      const snappedD = e.altKey ? newD : snapValue(newD, snapSpacingMm)
+      const snappedX = e.altKey ? newX : snapValue(newX, snapSpacingMm)
+      const snappedY = e.altKey ? newY : snapValue(newY, snapSpacingMm)
+
+      updateObject(id, { width: snappedW, depth: snappedD, x: snappedX, y: snappedY })
     }
     const onUp = () => {
       window.removeEventListener('mousemove', onMove)
@@ -112,7 +122,7 @@ export function PlacedObject({ object, isSelected, svgRef, zoom }: Props) {
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [id, x, y, width, depth, rotation, locked, zoom, svgRef, updateObject])
+  }, [id, x, y, width, depth, rotation, locked, zoom, svgRef, updateObject, snapSpacingMm])
 
   const hs = HANDLE_SIZE / zoom
   const handlePositions: Record<HandleDir, [number, number]> = {

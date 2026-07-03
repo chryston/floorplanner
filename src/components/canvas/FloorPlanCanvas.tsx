@@ -186,6 +186,7 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
             isSelected={obj.id === selectedObjectId}
             svgRef={svgRef}
             zoom={zoom}
+            snapSpacingMm={canvas.snap.enabled ? canvas.snap.spacingMm : 0}
           />
         ))}
 
