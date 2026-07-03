@@ -10,9 +10,10 @@ import { CustomShapeModal } from './components/modals/CustomShapeModal'
 import { ImportModal } from './components/modals/ImportModal'
 import { loadProject } from './utils/projectIO'
 import { DimensionLine } from './components/canvas/DimensionLine'
-import { snapPoint, constrainAngle } from './utils/geometry'
-import type { ActiveTool, DimensionAnnotation, WallSegment } from './types'
+import { snapPoint, constrainAngle, projectPointToSegment, distance, clamp } from './utils/geometry'
+import type { ActiveTool, DimensionAnnotation, WallSegment, DoorObject, WindowObject } from './types'
 import { isWallSegment } from './types'
+import { DoorRenderer, WindowRenderer } from './components/canvas/DoorWindowRenderer'
 
 interface CalibrationPoint {
   svgX: number
@@ -44,6 +45,12 @@ export default function App() {
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null)
   const [wallPreviewEnd, setWallPreviewEnd] = useState<{ x: number; y: number } | null>(null)
   const DEFAULT_WALL_THICKNESS = 100
+
+  // Door/window placement preview: tracks nearest wall and projected distance
+  const [placementPreview, setPlacementPreview] = useState<{
+    wallId: string
+    projDist: number
+  } | null>(null)
 
   const [calibrating, setCalibrating] = useState(false)
   const [calibrationPoints, setCalibrationPoints] = useState<CalibrationPoint[]>([])
@@ -79,6 +86,7 @@ export default function App() {
         setWallPreviewEnd(null)
         setDimStart(null)
         setDimPreviewEnd(null)
+        setPlacementPreview(null)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -172,7 +180,41 @@ export default function App() {
         setDimPreviewEnd(null)
       }
     }
-  }, [activeTool, dimStart, wallStart, snap, addAnyObject])
+    if (activeTool === 'door' && placementPreview) {
+      const layout = activeLayout(useStore.getState().project)
+      const wall = layout.objects.find(o => o.id === placementPreview.wallId)
+      if (wall && isWallSegment(wall)) {
+        const wallLen = distance(wall.start, wall.end)
+        const door: DoorObject = {
+          type: 'door',
+          id: crypto.randomUUID(),
+          name: 'Door',
+          wallId: placementPreview.wallId,
+          offsetMm: clamp(placementPreview.projDist - 450, 0, wallLen - 900),
+          widthMm: 900,
+          swingDirection: 'left',
+          swingAngleDeg: 90,
+        }
+        addAnyObject(door)
+      }
+    }
+    if (activeTool === 'window' && placementPreview) {
+      const layout = activeLayout(useStore.getState().project)
+      const wall = layout.objects.find(o => o.id === placementPreview.wallId)
+      if (wall && isWallSegment(wall)) {
+        const wallLen = distance(wall.start, wall.end)
+        const win: WindowObject = {
+          type: 'window',
+          id: crypto.randomUUID(),
+          name: 'Window',
+          wallId: placementPreview.wallId,
+          offsetMm: clamp(placementPreview.projDist - 600, 0, wallLen - 1200),
+          widthMm: 1200,
+        }
+        addAnyObject(win)
+      }
+    }
+  }, [activeTool, dimStart, wallStart, snap, addAnyObject, placementPreview])
 
   const handleWorldMouseMove = useCallback((worldPt: { x: number; y: number }, e: React.MouseEvent) => {
     if (activeTool === 'wall' && wallStart) {
@@ -183,6 +225,21 @@ export default function App() {
     if (activeTool === 'dimension' && dimStart) {
       const pt = snap.enabled && !e.altKey ? snapPoint(worldPt, snap.spacingMm) : worldPt
       setDimPreviewEnd(pt)
+    }
+    if (activeTool === 'door' || activeTool === 'window') {
+      const layout = activeLayout(useStore.getState().project)
+      let best: { wallId: string; projDist: number } | null = null
+      let bestDist = Infinity
+      for (const obj of layout.objects) {
+        if (!isWallSegment(obj)) continue
+        const proj = projectPointToSegment(worldPt, obj.start, obj.end)
+        const d = distance(worldPt, proj)
+        if (d < bestDist) {
+          bestDist = d
+          best = { wallId: obj.id, projDist: distance(obj.start, proj) }
+        }
+      }
+      setPlacementPreview(best && bestDist <= 200 ? best : null)
     }
   }, [activeTool, dimStart, wallStart, snap])
 
@@ -205,12 +262,50 @@ export default function App() {
     />
   ) : null
 
-  const drawingPreview = dimensionPreview ?? wallPreview
+  let doorWindowPreview: React.ReactNode = null
+  if (placementPreview && (activeTool === 'door' || activeTool === 'window')) {
+    const layout = activeLayout(useStore.getState().project)
+    const previewWall = layout.objects.find(o => o.id === placementPreview.wallId)
+    if (previewWall && isWallSegment(previewWall)) {
+      const wallLen = distance(previewWall.start, previewWall.end)
+      if (activeTool === 'door') {
+        const offsetMm = clamp(placementPreview.projDist - 450, 0, wallLen - 900)
+        doorWindowPreview = (
+          <g opacity={0.6} style={{ pointerEvents: 'none' }}>
+            <DoorRenderer
+              door={{ type: 'door', id: 'preview', name: 'Door', wallId: previewWall.id, offsetMm, widthMm: 900, swingDirection: 'left', swingAngleDeg: 90 }}
+              wall={previewWall}
+              selected={false}
+              zoom={zoomRef.current}
+              onSelect={() => {}}
+            />
+          </g>
+        )
+      } else {
+        const offsetMm = clamp(placementPreview.projDist - 600, 0, wallLen - 1200)
+        doorWindowPreview = (
+          <g opacity={0.6} style={{ pointerEvents: 'none' }}>
+            <WindowRenderer
+              win={{ type: 'window', id: 'preview', name: 'Window', wallId: previewWall.id, offsetMm, widthMm: 1200 }}
+              wall={previewWall}
+              selected={false}
+              zoom={zoomRef.current}
+              onSelect={() => {}}
+            />
+          </g>
+        )
+      }
+    }
+  }
+
+  const drawingPreview = dimensionPreview ?? wallPreview ?? doorWindowPreview
 
   return (
     <div className="flex h-full flex-col bg-surface text-text-primary">
       <Toolbar
         svgRef={svgRef}
+        activeTool={activeTool}
+        onSetActiveTool={_setActiveTool}
         onUploadImage={() => fileInputRef.current?.click()}
         onCalibrate={() => { setCalibrating(true); setCalibrationPoints([]) }}
         onImport={() => setShowImportModal(true)}

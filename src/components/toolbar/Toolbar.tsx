@@ -2,15 +2,18 @@ import React from 'react'
 import { useStore, activeLayout, useTemporalStore } from '../../store/store'
 import { downloadProjectJSON } from '../../utils/projectIO'
 import { exportSVGBlob, downloadFile } from '../../utils/exportSVG'
+import type { ActiveTool } from '../../types'
 
 interface Props {
   svgRef: React.RefObject<SVGSVGElement | null>
+  activeTool: ActiveTool
+  onSetActiveTool: (tool: ActiveTool) => void
   onUploadImage: () => void
   onCalibrate: () => void
   onImport: () => void
 }
 
-export function Toolbar({ svgRef, onUploadImage, onCalibrate, onImport }: Props) {
+export function Toolbar({ svgRef, activeTool, onSetActiveTool, onUploadImage, onCalibrate, onImport }: Props) {
   const project = useStore(s => s.project)
   const addLayout = useStore(s => s.addLayout)
   const switchLayout = useStore(s => s.switchLayout)
@@ -109,6 +112,22 @@ export function Toolbar({ svgRef, onUploadImage, onCalibrate, onImport }: Props)
         >
           ↪
         </button>
+        <div className="w-px h-4 bg-divider mx-1" />
+        {/* Drawing tools */}
+        {(['select', 'wall', 'door', 'window', 'dimension'] as ActiveTool[]).map(tool => (
+          <button
+            key={tool}
+            onClick={() => onSetActiveTool(tool)}
+            title={tool.charAt(0).toUpperCase() + tool.slice(1)}
+            className={`px-2 py-1 text-sm rounded transition-colors ${
+              activeTool === tool
+                ? 'bg-blue-600 text-white'
+                : 'text-text-muted hover:text-text-primary hover:bg-surface-raised'
+            }`}
+          >
+            {tool === 'select' ? '↖' : tool === 'wall' ? '▬' : tool === 'door' ? '🚪' : tool === 'window' ? '⊡' : '↔'}
+          </button>
+        ))}
         <div className="w-px h-4 bg-divider mx-1" />
         <button
           onClick={onUploadImage}

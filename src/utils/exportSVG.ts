@@ -1,5 +1,5 @@
-import { distance, formatDistance } from './geometry'
-import { isDimensionAnnotation, isWallSegment } from '../types'
+import { distance, formatDistance, pointAlongSegment, angleBetween } from './geometry'
+import { isDimensionAnnotation, isWallSegment, isDoorObject, isWindowObject } from '../types'
 import type { AnyObject } from '../types'
 
 export function exportSVGBlob(svgEl: SVGSVGElement): Blob {
@@ -29,6 +29,38 @@ export function exportDimensionAnnotationsSVG(objects: AnyObject[]): string {
   for (const obj of objects) {
     if (isWallSegment(obj)) {
       svg += `<line x1="${obj.start.x}" y1="${obj.start.y}" x2="${obj.end.x}" y2="${obj.end.y}" stroke="${obj.stroke ?? '#555'}" stroke-width="${obj.thicknessMm}" stroke-linecap="square"/>\n`
+    }
+    if (isDoorObject(obj)) {
+      // find parent wall from objects list
+      const wall = objects.find(o => isWallSegment(o) && o.id === obj.wallId)
+      if (wall && isWallSegment(wall)) {
+        const pos = pointAlongSegment(wall.start, wall.end, obj.offsetMm + obj.widthMm / 2)
+        const angleDeg = (angleBetween(wall.start, wall.end) * 180) / Math.PI
+        const w = obj.widthMm
+        const swingSide = obj.swingDirection === 'left' ? -1 : 1
+        const swingRad = (obj.swingAngleDeg * Math.PI) / 180
+        const hx = -w / 2
+        const arcEndX = hx + w * Math.cos(swingRad)
+        const arcEndY = w * Math.sin(swingRad) * swingSide
+        const sweepFlag = swingSide > 0 ? 0 : 1
+        svg += `<g transform="translate(${pos.x},${pos.y}) rotate(${angleDeg})">\n`
+        svg += `  <line x1="${hx}" y1="0" x2="${w / 2}" y2="0" stroke="#555" stroke-width="3"/>\n`
+        svg += `  <path d="M ${w / 2} 0 A ${w} ${w} 0 0 ${sweepFlag} ${arcEndX} ${arcEndY}" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="6 3"/>\n`
+        svg += `</g>\n`
+      }
+    }
+    if (isWindowObject(obj)) {
+      const wall = objects.find(o => isWallSegment(o) && o.id === obj.wallId)
+      if (wall && isWallSegment(wall)) {
+        const pos = pointAlongSegment(wall.start, wall.end, obj.offsetMm + obj.widthMm / 2)
+        const angleDeg = (angleBetween(wall.start, wall.end) * 180) / Math.PI
+        const w = obj.widthMm
+        const t = wall.thicknessMm
+        svg += `<g transform="translate(${pos.x},${pos.y}) rotate(${angleDeg})">\n`
+        svg += `  <rect x="${-w / 2}" y="${-t / 2}" width="${w}" height="${t}" fill="white" stroke="#555" stroke-width="1.5"/>\n`
+        svg += `  <line x1="0" y1="${-t / 2}" x2="0" y2="${t / 2}" stroke="#88bbdd" stroke-width="1.5"/>\n`
+        svg += `</g>\n`
+      }
     }
     if (isDimensionAnnotation(obj)) {
       const { start, end } = obj

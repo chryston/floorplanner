@@ -5,9 +5,10 @@ import { PlacedObject } from './PlacedObject'
 import { GridOverlay } from './GridOverlay'
 import { DimensionLabel } from './DimensionLabel'
 import type { ActiveTool } from '../../types'
-import { isFloorObject, isDimensionAnnotation, isWallSegment } from '../../types'
+import { isFloorObject, isDimensionAnnotation, isWallSegment, isDoorObject, isWindowObject } from '../../types'
 import { DimensionLine } from './DimensionLine'
 import { WallSegmentRenderer } from './WallSegmentRenderer'
+import { DoorRenderer, WindowRenderer } from './DoorWindowRenderer'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
@@ -207,6 +208,38 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
             onUpdate={patch => useStore.getState().updateObject(wall.id, patch)}
           />
         ))}
+
+        {/* Doors */}
+        {layout.objects.filter(isDoorObject).map(door => {
+          const wall = layout.objects.find(o => o.id === door.wallId)
+          if (!wall || !isWallSegment(wall)) return null
+          return (
+            <DoorRenderer
+              key={door.id}
+              door={door}
+              wall={wall}
+              selected={selectedObjectId === door.id}
+              zoom={zoom}
+              onSelect={() => selectObject(door.id)}
+            />
+          )
+        })}
+
+        {/* Windows */}
+        {layout.objects.filter(isWindowObject).map(win => {
+          const wall = layout.objects.find(o => o.id === win.wallId)
+          if (!wall || !isWallSegment(wall)) return null
+          return (
+            <WindowRenderer
+              key={win.id}
+              win={win}
+              wall={wall}
+              selected={selectedObjectId === win.id}
+              zoom={zoom}
+              onSelect={() => selectObject(win.id)}
+            />
+          )
+        })}
 
         {/* Dimension annotations */}
         {layout.objects.filter(isDimensionAnnotation).map(dim => (
