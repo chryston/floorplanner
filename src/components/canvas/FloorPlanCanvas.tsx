@@ -3,7 +3,9 @@ import { useStore, activeLayout } from '../../store/store'
 import { CalibrationOverlay } from './CalibrationOverlay'
 import { PlacedObject } from './PlacedObject'
 import { GridOverlay } from './GridOverlay'
+import { DimensionLabel } from './DimensionLabel'
 import type { ActiveTool } from '../../types'
+import { isFloorObject } from '../../types'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
@@ -28,6 +30,7 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
 
   const layout = activeLayout(project)
   const canvas = layout.canvas
+  const selectedObj = selectedObjectId ? layout.objects.find(o => o.id === selectedObjectId) ?? null : null
   const [zoom, setZoom] = useState(1)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
@@ -189,6 +192,11 @@ export function FloorPlanCanvas({ calibrating, onCalibrationPoint, svgRef, activ
             snapSpacingMm={canvas.snap.enabled ? canvas.snap.spacingMm : 0}
           />
         ))}
+
+        {/* Dimension label for selected object */}
+        {selectedObj && isFloorObject(selectedObj) && (
+          <DimensionLabel obj={selectedObj} zoom={zoom} />
+        )}
 
         {/* Drawing preview (world space) */}
         {drawingPreview}
